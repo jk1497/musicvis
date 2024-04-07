@@ -12,6 +12,13 @@ typedef struct {
 
 int main(){
 
+
+	InitAudioDevice();
+
+	Music myMusic = LoadMusicStream("resources/ffvii.mp3");
+
+	PlayMusicStream(myMusic);
+
     MyShape shapeArray[MAX_SHAPES] = { 0 };
 	Color color[3] = {RED,BLUE,YELLOW};
 
@@ -31,12 +38,13 @@ int main(){
 	Vector2 mousePosition = { 0.0f, 0.0f };
 
 	while(!WindowShouldClose()){
-
 		mousePosition = GetMousePosition();
+
+		UpdateMusicStream(myMusic);
 
 		//Prints current position of mouse
 		if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
-			printf("current position: %f\t%f\t%f\n",mousePosition.x,mousePosition.y,GetTime());
+			printf("current position: %f\t%f\t%f\n",mousePosition.x,mousePosition.y,GetMusicTimePlayed(myMusic));
 		}
 		
 		//Modify shapes with arrow keys
@@ -62,11 +70,7 @@ int main(){
 		}
 
 		BeginDrawing();
-			// ClearBackground(BEIGE);
-			// ClearBackground(GetColor(16764108));
 			ClearBackground((Color){ 240, 237, 228, 255 });
-
-			//Color){ 200, 200, 200, 255 }
 
 			for (int i = 0; i < MAX_SHAPES; i++){
 				DrawRectangleV(shapeArray[i].position,shapeArray[i].size,shapeArray[i].color);
@@ -74,6 +78,10 @@ int main(){
 
 		EndDrawing();
 	}
+
+	UnloadMusicStream(myMusic);   // Unload music stream buffers from RAM
+
+    CloseAudioDevice();         // Close audio device (music streaming is automatically stopped)
 
 	CloseWindow();
 
