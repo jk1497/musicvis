@@ -2,7 +2,7 @@
 #include "include/raylib.h"
 #define SCREEN_HOR 800.0
 #define SCREEN_VERT 600.0
-#define MAX_SHAPES 9
+#define MAX_SHAPES 18
 
 typedef struct {
     Vector2 startPos;
@@ -31,6 +31,8 @@ int main(){
     }
 
 	InitWindow(SCREEN_HOR,SCREEN_VERT,"musicvis");
+
+	SetTargetFPS(60);
 
 	Texture2D overlay = LoadTexture("resources/test.png");  
 
@@ -69,7 +71,7 @@ int main(){
 
 		if (IsKeyDown(KEY_DOWN)){
 			for (int i = 0; i < MAX_SHAPES; i+=1){
-				lineArray[i].thick += 0.01;
+				lineArray[i].thick += 0.5;
 				printf("Current THICC: %f\n",lineArray[i].thick);
 			}
 		}
@@ -81,8 +83,6 @@ int main(){
 
 		BeginDrawing();
 			ClearBackground((Color){ 240, 237, 228, 255 });
-
-			// DrawTexture(overlay, 0, 0, WHITE);
 
 			for (int i = 0; i < MAX_SHAPES; i++){
 				DrawLineEx(lineArray[i].startPos,lineArray[i].endPos,lineArray[i].thick,lineArray[i].color);
