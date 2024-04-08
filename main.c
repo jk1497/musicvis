@@ -30,7 +30,9 @@ int main(){
         shapeArray[i].color = color[i%3];
     }
 
-	InitWindow(SCREEN_HOR,SCREEN_VERT,"basic window");
+	InitWindow(SCREEN_HOR,SCREEN_VERT,"musicvis");
+
+	Texture2D overlay = LoadTexture("resources/scarab.png");  
 
 	//Parameters for modyfying shapes
 	float increaseRate = 100;
@@ -73,14 +75,21 @@ int main(){
 		BeginDrawing();
 			ClearBackground((Color){ 240, 237, 228, 255 });
 
+			// DrawTexture(overlay, 0, 0, WHITE);
+
 			for (int i = 0; i < MAX_SHAPES; i++){
 				DrawRectangleV(shapeArray[i].position,shapeArray[i].size,shapeArray[i].color);
 			}
+
+			DrawTexture(overlay, 0, 0, WHITE);
+
 
 		EndDrawing();
 	}
 
 	UnloadMusicStream(myMusic);   // Unload music stream buffers from RAM
+
+	UnloadTexture(overlay); 
 
     CloseAudioDevice();         // Close audio device (music streaming is automatically stopped)
 
