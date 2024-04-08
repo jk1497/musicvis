@@ -11,8 +11,14 @@ typedef struct {
     Color color;
 } MyShape;
 
-int main(){
+typedef struct {
+    Vector2 startPos;
+	Vector2 endPos;
+	float thick;
+    Color color;
+} MyLine;
 
+int main(){
 
 	InitAudioDevice();
 
@@ -21,6 +27,7 @@ int main(){
 	PlayMusicStream(myMusic);
 
     MyShape shapeArray[MAX_SHAPES] = { 0 };
+	MyLine lineArray[MAX_SHAPES] = { 0 };
 	Color color[3] = {RED,BLUE,YELLOW};
 
     // Initialize Shapes
@@ -28,6 +35,13 @@ int main(){
         shapeArray[i].position = (Vector2){SCREEN_HOR/(MAX_SHAPES+1)*(i+1)+30,SCREEN_VERT};
 		shapeArray[i].size = (Vector2){ -60.0f, -60.0f };
         shapeArray[i].color = color[i%3];
+    }
+
+    for (int i = 0; i < MAX_SHAPES; i++){
+        lineArray[i].startPos = (Vector2){SCREEN_HOR/(MAX_SHAPES+1)*(i+1),SCREEN_VERT};
+		lineArray[i].endPos = (Vector2){SCREEN_HOR/(MAX_SHAPES+1)*(i+1),SCREEN_VERT};
+		lineArray[i].thick = 15.0;
+        lineArray[i].color = color[i%3];
     }
 
 	InitWindow(SCREEN_HOR,SCREEN_VERT,"musicvis");
@@ -67,9 +81,38 @@ int main(){
 			}
 		}
 
+		//Modify lines with arrow keys
+		if (IsKeyDown(KEY_LEFT)){
+			for (int i = 0; i < MAX_SHAPES; i+=3){
+				lineArray[i].endPos.y -= GetFrameTime()*increaseRate;
+			}
+		}
+		if (IsKeyDown(KEY_UP)){
+			for (int i = 1; i < MAX_SHAPES; i+=3){
+				lineArray[i].endPos.y -= GetFrameTime()*increaseRate;
+			}
+		}
+		if (IsKeyDown(KEY_RIGHT)){
+			for (int i = 2; i < MAX_SHAPES; i+=3){
+				lineArray[i].endPos.y -= GetFrameTime()*increaseRate;
+			}
+		}
+
+		if (IsKeyDown(KEY_DOWN)){
+			for (int i = 0; i < MAX_SHAPES; i+=1){
+				lineArray[i].thick += 0.01;
+				printf("Current THICC: %f\n",lineArray[i].thick);
+			}
+		}
+
 		//Decrease size of shapes while inactive
     	for (int i = 0; i < MAX_SHAPES; i++){
 			if (shapeArray[i].size.y<-60)shapeArray[i].size.y += GetFrameTime()*decreaseRate;
+		}
+
+		//Decrease size of lines while inactive
+    	for (int i = 0; i < MAX_SHAPES; i++){
+			if (lineArray[i].endPos.y<580)lineArray[i].endPos.y += GetFrameTime()*decreaseRate;
 		}
 
 		BeginDrawing();
@@ -77,8 +120,13 @@ int main(){
 
 			// DrawTexture(overlay, 0, 0, WHITE);
 
+			// for (int i = 0; i < MAX_SHAPES; i++){
+			// 	DrawRectangleV(shapeArray[i].position,shapeArray[i].size,shapeArray[i].color);
+			// }
+
 			for (int i = 0; i < MAX_SHAPES; i++){
-				DrawRectangleV(shapeArray[i].position,shapeArray[i].size,shapeArray[i].color);
+				DrawLineEx(lineArray[i].startPos,lineArray[i].endPos,lineArray[i].thick,lineArray[i].color);
+				
 			}
 
 			DrawTexture(overlay, 0, 0, WHITE);
