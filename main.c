@@ -3,6 +3,7 @@
 #define SCREEN_HOR 800.0
 #define SCREEN_VERT 600.0
 #define MAX_SHAPES 9
+#define SHAPE_SIZE 60.0
 
 typedef struct {
     Vector2 position;
@@ -24,7 +25,7 @@ int main(){
 
     // Initialize Shapes
     for (int i = 0; i < MAX_SHAPES; i++){
-        shapeArray[i].position = (Vector2){SCREEN_HOR/10*(i+1)+30,SCREEN_VERT};
+        shapeArray[i].position = (Vector2){SCREEN_HOR/(MAX_SHAPES+1)*(i+1)+30,SCREEN_VERT};
 		shapeArray[i].size = (Vector2){ -60.0f, -60.0f };
         shapeArray[i].color = color[i%3];
     }
