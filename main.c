@@ -7,14 +7,15 @@
 #define SCREEN_HOR 1200.0
 #define SCREEN_VERT 900.0
 #define MAX_SHAPES 18
+#define MAX_BARS 100
 #define ARRAY_LEN(xs)sizeof(xs)/sizeof(xs[0])
 #define Float_Complex float complex
-#define N (1<<14)
+#define N (1<<13)
 // #define N 256
 
-float in[N];
+float in1[N];
+float in2[N];
 float complex out[N];
-float max_amp;
 
 typedef struct {
     Vector2 startPos;
@@ -49,34 +50,21 @@ void fft(float in[], size_t stride, Float_Complex out[], size_t n){
 }
 
 float amp(float complex z){
-	float a = fabsf(crealf(z));
-	float b = fabsf(cimagf(z));
-	if(a<b) return b;
-	return a;
+	// float a = fabsf(crealf(z));
+	// float b = fabsf(cimagf(z));
+	// if(a<b) return b;
+	// return a;
+
+	return cabsf(z);
 }
 
 void callback(void *bufferData, unsigned int frames){
-
-    // if(frames > N) frames = N;
-
 	Frame *fs = bufferData;
 
 	for (size_t i=0;i<frames;i++){
-		memmove(in,in+1,(N-1)*sizeof(in[0]));
-		in[N-1] = fs[i].left;
+		memmove(in1,in1+1,(N-1)*sizeof(in1[0]));
+		in1[N-1] = fs[i].left;
 	}
-
-	// for (size_t i = 0; i < frames; i++){
-	// 	in[i] = fs[i].left;
-	// }
-
-	// fft(in, 1, out, N);
-
-	// max_amp = 0.0f;
-	// for (size_t i = 0; i < frames; i++){
-	// 	float a = amp(out[i]);
-	// 	if (a > max_amp) max_amp = a;
-	// }
 }
 
 int main(){
@@ -84,6 +72,8 @@ int main(){
 	InitAudioDevice();
 
 	SetTargetFPS(60);
+
+
 
 	Music myMusic = LoadMusicStream("resources/ffvii_sinscale.mp3");
 	assert(myMusic.stream.sampleSize == 32);
@@ -106,14 +96,22 @@ int main(){
 	Texture2D overlay = LoadTexture("resources/test.png");  
 
 	//Parameters for modyfying shapes
-	float increaseRate = 0.01;
+	float increaseRate = 10;
 	float decreaseRate = 0.006;
 
 	Vector2 mousePosition = { 0.0f, 0.0f };
 
 	AttachAudioStreamProcessor(myMusic.stream,callback);
 
+	bool istab = true;
+
 	while(!WindowShouldClose()){
+
+		if(IsKeyPressed(KEY_TAB)){
+			if (istab) istab = false;
+			else istab = true;
+			printf("\n%d",istab);
+		}
 
 		UpdateMusicStream(myMusic);
 
@@ -131,21 +129,15 @@ int main(){
 		}
 		
 
-		int w = GetRenderWidth();
-		int h = GetRenderHeight();
+		int w = GetScreenWidth();
+		int h = GetScreenHeight();
+		// int w = GetRenderWidth();
+		// int h = GetRenderHeight();
 
 		BeginDrawing();
-		ClearBackground((Color){ 240, 237, 228, 255 });
-
-		for (int i = 0; i < MAX_SHAPES; i++){
-			DrawLineEx(lineArray[i].startPos,lineArray[i].endPos,lineArray[i].thick,lineArray[i].color);
-		}
 
 		float max_h = 0;
 		float cur_h = 0;
-
-		// ClearBackground(CLITERAL(Color) {0x18, 0x18, 0x18, 0xFF});
-		// float cell_width = (float)w/global_frames_count;
 
 		float playback_status = GetMusicTimePlayed(myMusic)/ GetMusicTimeLength(myMusic);
 
@@ -154,62 +146,74 @@ int main(){
 		Vector2 max_endpos = (Vector2){SCREEN_HOR,SCREEN_VERT-(SCREEN_VERT*playback_status)};
 		Vector2 min_endpos = (Vector2){SCREEN_HOR,SCREEN_VERT*playback_status};
 
-		int true_count = 0;
-		int false_count = 0;
-
-
-		float cell_width = 2;
-		// for (size_t i = 0; i < N; ++i) {
-		// 	float t = amp(out[i])/max_amp;
-		// 	printf("\n%f",t);
-		// 	DrawRectangle(i*cell_width, SCREEN_VERT/2 - SCREEN_VERT/2*t, cell_width, SCREEN_VERT/2*t, RED);
-		// }
-
-		for (size_t i = 0; i < SCREEN_HOR; ++i) {
-			float t = amp(out[i])/max_amp;
-			// printf("\n%f",t);
-			DrawRectangle(i*cell_width, SCREEN_VERT/2 - SCREEN_VERT/2*t, cell_width, SCREEN_VERT/2*t, RED);
+		for (size_t i = 0; i < N; ++i){
+			float t = (float)i/N;
+			float hann = 0.5-0.5*cosf(2*PI*t);
+			in2[i] = in1[i] * hann;
 		}
 		
-		//rendering lines
-		// for (size_t i = 0; i < global_frames_count; ++i) {
+		fft(in2,1,out,N);
 
-		// 	float t = global_frames[i].left;
+		float max_amp = 0.0f;
+		for (size_t i = 0; i < N; i++){
+			float a = amp(out[i]);
+			if (max_amp < a) max_amp = a;
+		}
 
-		// 	if (h/2*t > max_h){
-		// 		max_h = h/2*t;
-		// 	}
+		float step = 1.06;
+		float lowf = 1.0f;
+		size_t m = 0;
+		for (float f = lowf; (size_t) f < N/2; f *= step){
+			m+=1;
+		}
+
+		float cell_width = (float)w/m;
+		// if (cell_width < 0) cell_width = 1;
+		m=0;
+
+		// TODO group lines by m, for increasing and decreasing
+
+		if (istab){
+			ClearBackground((Color){ 240, 237, 228, 255 });
+
+			for (float f = lowf; (size_t) f < N/2; f = ceilf(f*step)) {
+				float f1 = ceilf(f*step);
+				float a = 0.0f;
+				for (size_t q = (size_t) f; q < N/2 && q < (size_t) f1; ++q) { 
+					float b = amp(out[q]);
+					if(b>a)a=b;
+				} 
+				float t = a/max_amp;
+				for (int i = 0; i < MAX_SHAPES; i++){
+					DrawLineEx(lineArray[i].startPos,lineArray[i].endPos,lineArray[i].thick,lineArray[i].color);
+					if (lineArray[i].endPos.y > max_endpos.y){
+					lineArray[i].endPos.y -= increaseRate*fabs(t);
+					}
+				}
+				m += 1;
+			}
+		}
+
+
+		if (!istab){
+			ClearBackground((Color){ 240, 237, 228, 255 });
+
+			// for (float f = lowf; (size_t) f < N/2; f++) {
+			for (float f = lowf; (size_t) f < N/2; f = ceilf(f*step)) {
+				float f1 = ceilf(f*step);
+				float a = 0.0f;
+				for (size_t q = (size_t) f; q < N/2 && q < (size_t) f1; ++q) { 
+					float b = amp(out[q]);
+					if(b>a)a=b;
+				} 
+				float t = a/max_amp;
+				// printf("\n%zu\t%0.2f\t%0.2f\t",m,cell_width,m*cell_width);
+				// DrawRectangle((SCREEN_HOR/MAX_BARS)*(f)/2, (h/2 - h/2*t)+(0.25*h), cell_width, h/2*t, GREEN);
+				DrawRectangle(m*cell_width+0.125*SCREEN_HOR, h/2 - h/2*t+0.25*SCREEN_VERT, cell_width, h/2*t, GREEN);
+				m += 1;
+			}		
+		}
 		
-		// 	if (t > 0) {
-		// 		// DrawRectangle(i*cell_width, h/2 - h/2*t, 1, h/2*t, RED);
-
-		// 		for (int i = 0; i < MAX_SHAPES; i++){
-					
-		// 			if (lineArray[i].endPos.y > max_endpos.y)
-		// 			{
-		// 				lineArray[i].endPos.y -= increaseRate*fabs(t);
-		// 			}
-					
-		// 		}
-
-		// 	true_count++;
-		// 	} else {
-		// 		// DrawRectangle(i*cell_width, h/2, 1, h/2*t, RED);
-
-		// 		for (int i = 0; i < MAX_SHAPES; i++){
-
-		// 			lineArray[i].endPos.y += decreaseRate*fabs(t);
-					
-		// 		}
-		// 	false_count++;
-		// 	}
-
-
-		// }
-
-		// float ylen = (lineArray[0].endPos.x - lineArray[0].startPos.x)*(lineArray[0].endPos.x - lineArray[0].startPos.x) + (lineArray[0].endPos.y - lineArray[0].startPos.y)*(lineArray[0].endPos.y - lineArray[0].startPos.y);
-		// printf("\n%.2f\t%d\t%d\t",playback_status,true_count,false_count);
-
 		EndDrawing();
 	}
 
