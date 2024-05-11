@@ -8,6 +8,7 @@
 #define SCREEN_VERT 900.0
 #define MAX_SHAPES 18
 #define MAX_BARS 100
+#define MAX_HERZ 20000.0
 #define ARRAY_LEN(xs)sizeof(xs)/sizeof(xs[0])
 #define Float_Complex float complex
 #define N (1<<13)
@@ -75,7 +76,7 @@ int main(){
 
 
 
-	Music myMusic = LoadMusicStream("resources/ffvii_sinscale.mp3");
+	Music myMusic = LoadMusicStream("resources/ffvii_short.mp3");
 	assert(myMusic.stream.sampleSize == 32);
 
 	PlayMusicStream(myMusic);
@@ -96,7 +97,7 @@ int main(){
 	Texture2D overlay = LoadTexture("resources/test.png");  
 
 	//Parameters for modyfying shapes
-	float increaseRate = 10;
+	float increaseRate = 1;
 	float decreaseRate = 0.006;
 
 	Vector2 mousePosition = { 0.0f, 0.0f };
@@ -107,14 +108,16 @@ int main(){
 
 	while(!WindowShouldClose()){
 
+
+		// Use tab to switch views
 		if(IsKeyPressed(KEY_TAB)){
 			if (istab) istab = false;
 			else istab = true;
-			printf("\n%d",istab);
 		}
 
 		UpdateMusicStream(myMusic);
 
+		// Use spacebar to pause music
 		if (IsKeyPressed(KEY_SPACE)){
 			if(IsMusicStreamPlaying(myMusic)){
 				PauseMusicStream(myMusic);
@@ -128,7 +131,6 @@ int main(){
 			DrawText("PAUSED...", 5, 5, 18, DARKGREEN); 
 		}
 		
-
 		int w = GetScreenWidth();
 		int h = GetScreenHeight();
 		// int w = GetRenderWidth();
@@ -152,6 +154,7 @@ int main(){
 			in2[i] = in1[i] * hann;
 		}
 		
+		// Perform Fast Fourier Transform on input signal
 		fft(in2,1,out,N);
 
 		float max_amp = 0.0f;
@@ -167,14 +170,18 @@ int main(){
 			m+=1;
 		}
 
-		float cell_width = (float)w/m;
-		// if (cell_width < 0) cell_width = 1;
+		float cell_width = 1;//(float)w/m;
+
 		m=0;
 
-		// TODO group lines by m, for increasing and decreasing
 
+		// View line drawing
 		if (istab){
 			ClearBackground((Color){ 240, 237, 228, 255 });
+
+			// Bass: frequency < 500Hz
+			// Mid: 500 - 2000Hz
+			// Highs: 2000Hz+
 
 			for (float f = lowf; (size_t) f < N/2; f = ceilf(f*step)) {
 				float f1 = ceilf(f*step);
@@ -183,10 +190,27 @@ int main(){
 					float b = amp(out[q]);
 					if(b>a)a=b;
 				} 
+
+				// t represents amplitude, 0 < t < 1
 				float t = a/max_amp;
+
+
+				// Calculate frequency: f = k/N*R (sampling rate)
+				// EG 48.83Hz = 1/1024*50kHz
+				float frequency = f/N*myMusic.stream.sampleRate;
+
 				for (int i = 0; i < MAX_SHAPES; i++){
 					DrawLineEx(lineArray[i].startPos,lineArray[i].endPos,lineArray[i].thick,lineArray[i].color);
-					if (lineArray[i].endPos.y > max_endpos.y){
+
+					if (frequency < 500 && i%3 == 0 && lineArray[i].endPos.y > max_endpos.y && t == 1){
+					lineArray[i].endPos.y -= increaseRate*fabs(t);
+					}
+
+					if (frequency > 500 && i%3 == 1 && frequency < 1500 && lineArray[i].endPos.y > max_endpos.y && t == 1){
+					lineArray[i].endPos.y -= increaseRate*fabs(t);
+					}
+
+					if (frequency > 1500 && i%3 == 2 && lineArray[i].endPos.y > max_endpos.y && t > 0.5){
 					lineArray[i].endPos.y -= increaseRate*fabs(t);
 					}
 				}
@@ -194,26 +218,35 @@ int main(){
 			}
 		}
 
+		float xStep = pow(2.0f, (log(w/1) / log(2.0f)) / w);
 
+		// Plot spectrum
 		if (!istab){
 			ClearBackground((Color){ 240, 237, 228, 255 });
 
-			// for (float f = lowf; (size_t) f < N/2; f++) {
-			for (float f = lowf; (size_t) f < N/2; f = ceilf(f*step)) {
-				float f1 = ceilf(f*step);
+			for (float f = lowf; (size_t) f < N/2; f = ceilf(f+xStep)) {
+
+				float f1 = ceilf(f+xStep);
 				float a = 0.0f;
 				for (size_t q = (size_t) f; q < N/2 && q < (size_t) f1; ++q) { 
 					float b = amp(out[q]);
 					if(b>a)a=b;
 				} 
+				
+				// t represents amplitude, 0 < t < 1
 				float t = a/max_amp;
-				// printf("\n%zu\t%0.2f\t%0.2f\t",m,cell_width,m*cell_width);
-				// DrawRectangle((SCREEN_HOR/MAX_BARS)*(f)/2, (h/2 - h/2*t)+(0.25*h), cell_width, h/2*t, GREEN);
-				DrawRectangle(m*cell_width+0.125*SCREEN_HOR, h/2 - h/2*t+0.25*SCREEN_VERT, cell_width, h/2*t, GREEN);
+
+				if(t>0){
+
+				float frequency = f/N*myMusic.stream.sampleRate;
+				float x_pos = log10(frequency)/log10(MAX_HERZ);
+
+				DrawRectangle(w*x_pos, h/2 - h/2*t+0.25*SCREEN_VERT, cell_width, h/2*t, GREEN);
+
+				} 
 				m += 1;
-			}		
+			}
 		}
-		
 		EndDrawing();
 	}
 
